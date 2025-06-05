@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../config/database_config.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/connection_test_widget.dart';
 import '../auth/login_screen.dart';
 
 class HomePage extends StatefulWidget {
@@ -170,7 +171,12 @@ class HomeScreen extends StatelessWidget {
             ),
             
             const SizedBox(height: 24),
-            
+
+            // Backend Connection Test
+            const ConnectionTestWidget(),
+
+            const SizedBox(height: 24),
+
             // Quick Actions
             Text(
               'Quick Actions',
@@ -399,16 +405,23 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      authService.currentUserName ?? 'User Name',
+                      authService.currentUser?.fullName ?? 'User Name',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      authService.currentUserEmail ?? 'user@example.com',
+                      authService.currentUser?.email ?? 'user@example.com',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Role: ${authService.currentUser?.roleName ?? 'Customer'}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[500],
                       ),
                     ),
                   ],

@@ -55,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Invalid email or password'),
+              content: Text('Login failed. Please check your credentials.'),
               backgroundColor: Colors.red,
             ),
           );
@@ -63,9 +63,12 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final authService = AuthService();
+        final errorMessage = authService.getErrorMessage(e);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Login failed: ${e.toString()}'),
+            content: Text('Login failed: $errorMessage'),
             backgroundColor: Colors.red,
           ),
         );

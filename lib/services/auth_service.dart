@@ -1,41 +1,73 @@
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../config/database_config.dart';
+import '../models/api_response.dart';
+import 'api_client.dart';
 
 class AuthService {
   static const String _tokenKey = 'auth_token';
-  static const String _userIdKey = 'user_id';
-  static const String _userEmailKey = 'user_email';
-  static const String _userNameKey = 'user_name';
+  static const String _userDataKey = 'user_data';
   static const String _isLoggedInKey = 'is_logged_in';
+  static const String _tokenExpiryKey = 'token_expiry';
 
   // Singleton pattern
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal();
 
+  // API client
+  final ApiClient _apiClient = ApiClient();
+
   // Current user data
-  String? _currentUserId;
-  String? _currentUserEmail;
-  String? _currentUserName;
+  User? _currentUser;
   String? _authToken;
   bool _isLoggedIn = false;
+  DateTime? _tokenExpiry;
 
   // Getters
   bool get isLoggedIn => _isLoggedIn;
-  String? get currentUserId => _currentUserId;
-  String? get currentUserEmail => _currentUserEmail;
-  String? get currentUserName => _currentUserName;
+  User? get currentUser => _currentUser;
+  String? get currentUserId => _currentUser?.id.toString();
+  String? get currentUserEmail => _currentUser?.email;
+  String? get currentUserName => _currentUser?.fullName;
   String? get authToken => _authToken;
 
   // Initialize auth service (call this on app startup)
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     _isLoggedIn = prefs.getBool(_isLoggedInKey) ?? false;
-    _currentUserId = prefs.getString(_userIdKey);
-    _currentUserEmail = prefs.getString(_userEmailKey);
-    _currentUserName = prefs.getString(_userNameKey);
     _authToken = prefs.getString(_tokenKey);
+
+    // Load user data
+    final userDataString = prefs.getString(_userDataKey);
+    if (userDataString != null) {
+      try {
+        // Parse the JSON string properly
+        final userData = Map<String, dynamic>.from(
+          jsonDecode(userDataString)
+        );
+        _currentUser = User.fromJson(userData);
+      } catch (e) {
+        // Clear invalid user data
+        await _clearStoredData();
+      }
+    }
+
+    // Load token expiry
+    final expiryString = prefs.getString(_tokenExpiryKey);
+    if (expiryString != null) {
+      _tokenExpiry = DateTime.tryParse(expiryString);
+    }
+
+    // Set token in API client
+    if (_authToken != null) {
+      _apiClient.setAuthToken(_authToken);
+    }
+
+    // Check if token is expired
+    if (_tokenExpiry != null && DateTime.now().isAfter(_tokenExpiry!)) {
+      await logout();
+    }
   }
 
   // Login method
@@ -45,30 +77,24 @@ class AuthService {
     bool rememberMe = false,
   }) async {
     try {
-      // TODO: Implement actual API call to your backend
-      // For now, we'll simulate a successful login
-      
-      // Simulate API delay
-      await Future.delayed(const Duration(seconds: 1));
-      
-      // Mock user data (replace with actual API response)
-      final userData = {
-        'id': '1',
-        'email': email,
-        'name': 'John Doe',
-        'token': 'mock_auth_token_${DateTime.now().millisecondsSinceEpoch}',
-      };
-
-      // Save user data
-      await _saveUserData(
-        userId: userData['id']!,
-        email: userData['email']!,
-        name: userData['name']!,
-        token: userData['token']!,
+      final loginRequest = LoginRequest(
+        email: email,
+        password: password,
         rememberMe: rememberMe,
       );
 
-      return true;
+      final response = await _apiClient.post<AuthData>(
+        '/auth/login',
+        body: loginRequest.toJson(),
+        fromJson: (json) => AuthData.fromJson(json),
+      );
+
+      if (response.success && response.data != null) {
+        await _saveAuthData(response.data!);
+        return true;
+      } else {
+        throw ApiException(response.message);
+      }
     } catch (e) {
       print('Login error: $e');
       return false;
@@ -82,32 +108,32 @@ class AuthService {
     required String email,
     required String phone,
     required String password,
+    String? dateOfBirth,
+    String? gender,
   }) async {
     try {
-      // TODO: Implement actual API call to your backend
-      // For now, we'll simulate a successful registration
-      
-      // Simulate API delay
-      await Future.delayed(const Duration(seconds: 1));
-      
-      // Mock user data (replace with actual API response)
-      final userData = {
-        'id': '1',
-        'email': email,
-        'name': '$firstName $lastName',
-        'token': 'mock_auth_token_${DateTime.now().millisecondsSinceEpoch}',
-      };
-
-      // Save user data
-      await _saveUserData(
-        userId: userData['id']!,
-        email: userData['email']!,
-        name: userData['name']!,
-        token: userData['token']!,
-        rememberMe: true,
+      final registerRequest = RegisterRequest(
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        phone: phone,
+        password: password,
+        dateOfBirth: dateOfBirth,
+        gender: gender,
       );
 
-      return true;
+      final response = await _apiClient.post<AuthData>(
+        '/auth/register',
+        body: registerRequest.toJson(),
+        fromJson: (json) => AuthData.fromJson(json),
+      );
+
+      if (response.success && response.data != null) {
+        await _saveAuthData(response.data!);
+        return true;
+      } else {
+        throw ApiException(response.message);
+      }
     } catch (e) {
       print('Registration error: $e');
       return false;
@@ -116,71 +142,93 @@ class AuthService {
 
   // Logout method
   Future<void> logout() async {
+    await _clearStoredData();
+
+    // Clear API client token
+    _apiClient.clearAuth();
+  }
+
+  // Clear stored data
+  Future<void> _clearStoredData() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Clear all stored data
     await prefs.remove(_tokenKey);
-    await prefs.remove(_userIdKey);
-    await prefs.remove(_userEmailKey);
-    await prefs.remove(_userNameKey);
+    await prefs.remove(_userDataKey);
+    await prefs.remove(_tokenExpiryKey);
     await prefs.setBool(_isLoggedInKey, false);
-    
+
     // Clear in-memory data
-    _currentUserId = null;
-    _currentUserEmail = null;
-    _currentUserName = null;
+    _currentUser = null;
     _authToken = null;
+    _tokenExpiry = null;
     _isLoggedIn = false;
   }
 
-  // Save user data to SharedPreferences
-  Future<void> _saveUserData({
-    required String userId,
-    required String email,
-    required String name,
-    required String token,
-    required bool rememberMe,
-  }) async {
+  // Save authentication data
+  Future<void> _saveAuthData(AuthData authData) async {
     final prefs = await SharedPreferences.getInstance();
-    
+
+    // Calculate token expiry
+    final expiry = DateTime.now().add(Duration(seconds: authData.expiresIn));
+
     // Save to SharedPreferences
-    await prefs.setString(_userIdKey, userId);
-    await prefs.setString(_userEmailKey, email);
-    await prefs.setString(_userNameKey, name);
-    await prefs.setString(_tokenKey, token);
+    await prefs.setString(_tokenKey, authData.token);
+    await prefs.setString(_userDataKey, jsonEncode(authData.user.toJson()));
+    await prefs.setString(_tokenExpiryKey, expiry.toIso8601String());
     await prefs.setBool(_isLoggedInKey, true);
-    
+
     // Update in-memory data
-    _currentUserId = userId;
-    _currentUserEmail = email;
-    _currentUserName = name;
-    _authToken = token;
+    _currentUser = authData.user;
+    _authToken = authData.token;
+    _tokenExpiry = expiry;
     _isLoggedIn = true;
+
+    // Set token in API client
+    _apiClient.setAuthToken(authData.token);
   }
 
-  // Check if token is valid (you can implement token expiry logic here)
+  // Check if token is valid
   Future<bool> isTokenValid() async {
-    if (_authToken == null) return false;
-    
-    // TODO: Implement actual token validation with your backend
-    // For now, we'll just check if token exists
-    return _authToken!.isNotEmpty;
+    if (_authToken == null || _authToken!.isEmpty) return false;
+
+    // Check if token is expired
+    if (_tokenExpiry != null && DateTime.now().isAfter(_tokenExpiry!)) {
+      return false;
+    }
+
+    try {
+      // Validate token with backend
+      final response = await _apiClient.post<User>(
+        '/auth/validate',
+        body: {'token': _authToken},
+        fromJson: (json) => User.fromJson(json['user']),
+      );
+
+      return response.success;
+    } catch (e) {
+      print('Token validation error: $e');
+      return false;
+    }
   }
 
   // Refresh token
   Future<bool> refreshToken() async {
     try {
       if (_authToken == null) return false;
-      
-      // TODO: Implement actual token refresh with your backend
-      // For now, we'll just generate a new mock token
-      final newToken = 'refreshed_token_${DateTime.now().millisecondsSinceEpoch}';
-      
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_tokenKey, newToken);
-      _authToken = newToken;
-      
-      return true;
+
+      final response = await _apiClient.post<AuthData>(
+        '/auth/refresh',
+        body: {'token': _authToken},
+        fromJson: (json) => AuthData.fromJson(json),
+      );
+
+      if (response.success && response.data != null) {
+        await _saveAuthData(response.data!);
+        return true;
+      }
+
+      return false;
     } catch (e) {
       print('Token refresh error: $e');
       return false;
@@ -195,28 +243,60 @@ class AuthService {
     };
   }
 
+  // Get user profile
+  Future<User?> getUserProfile() async {
+    try {
+      final response = await _apiClient.get<User>(
+        '/auth/profile',
+        fromJson: (json) => User.fromJson(json['user']),
+      );
+
+      if (response.success && response.data != null) {
+        _currentUser = response.data;
+        return response.data;
+      }
+
+      return null;
+    } catch (e) {
+      print('Get profile error: $e');
+      return null;
+    }
+  }
+
   // Update user profile
   Future<bool> updateProfile({
-    String? name,
-    String? email,
+    String? firstName,
+    String? lastName,
     String? phone,
+    String? dateOfBirth,
+    String? gender,
   }) async {
     try {
-      // TODO: Implement actual API call to update profile
-      
-      if (name != null) {
-        _currentUserName = name;
+      final updateRequest = UpdateProfileRequest(
+        firstName: firstName,
+        lastName: lastName,
+        phone: phone,
+        dateOfBirth: dateOfBirth,
+        gender: gender,
+      );
+
+      final response = await _apiClient.put<User>(
+        '/auth/profile',
+        body: updateRequest.toJson(),
+        fromJson: (json) => User.fromJson(json['user']),
+      );
+
+      if (response.success && response.data != null) {
+        _currentUser = response.data;
+
+        // Update stored user data
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_userNameKey, name);
+        await prefs.setString(_userDataKey, jsonEncode(_currentUser!.toJson()));
+
+        return true;
       }
-      
-      if (email != null) {
-        _currentUserEmail = email;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_userEmailKey, email);
-      }
-      
-      return true;
+
+      return false;
     } catch (e) {
       print('Profile update error: $e');
       return false;
@@ -229,12 +309,17 @@ class AuthService {
     required String newPassword,
   }) async {
     try {
-      // TODO: Implement actual API call to change password
-      
-      // Simulate API delay
-      await Future.delayed(const Duration(seconds: 1));
-      
-      return true;
+      final changePasswordRequest = ChangePasswordRequest(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+
+      final response = await _apiClient.post(
+        '/auth/change-password',
+        body: changePasswordRequest.toJson(),
+      );
+
+      return response.success;
     } catch (e) {
       print('Password change error: $e');
       return false;
@@ -244,18 +329,41 @@ class AuthService {
   // Delete account
   Future<bool> deleteAccount() async {
     try {
-      // TODO: Implement actual API call to delete account
-      
-      // Simulate API delay
-      await Future.delayed(const Duration(seconds: 1));
-      
-      // Logout after successful deletion
-      await logout();
-      
-      return true;
+      final response = await _apiClient.delete('/auth/profile');
+
+      if (response.success) {
+        // Logout after successful deletion
+        await logout();
+        return true;
+      }
+
+      return false;
     } catch (e) {
       print('Account deletion error: $e');
       return false;
+    }
+  }
+
+  // Test backend connection
+  Future<bool> testConnection() async {
+    try {
+      return await _apiClient.testConnection();
+    } catch (e) {
+      print('Connection test error: $e');
+      return false;
+    }
+  }
+
+  // Get error message from exception
+  String getErrorMessage(dynamic error) {
+    if (error is ApiException) {
+      return error.message;
+    } else if (error is NetworkException) {
+      return error.message;
+    } else if (error is AuthenticationException) {
+      return error.message;
+    } else {
+      return 'An unexpected error occurred';
     }
   }
 }

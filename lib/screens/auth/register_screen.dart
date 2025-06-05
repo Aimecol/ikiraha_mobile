@@ -76,7 +76,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Registration failed. Please try again.'),
+              content: Text('Registration failed. Please check your information and try again.'),
               backgroundColor: Colors.red,
             ),
           );
@@ -84,9 +84,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final authService = AuthService();
+        final errorMessage = authService.getErrorMessage(e);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Registration failed: ${e.toString()}'),
+            content: Text('Registration failed: $errorMessage'),
             backgroundColor: Colors.red,
           ),
         );
