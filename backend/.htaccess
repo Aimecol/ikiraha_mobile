@@ -1,0 +1,79 @@
+# Ikiraha Mobile Backend API .htaccess Configuration
+
+# Enable URL rewriting
+RewriteEngine On
+
+# Set CORS headers for all requests
+Header always set Access-Control-Allow-Origin "*"
+Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+Header always set Access-Control-Max-Age "3600"
+
+# Handle preflight OPTIONS requests
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ $1 [R=200,L]
+
+# Security headers
+Header always set X-Content-Type-Options nosniff
+Header always set X-Frame-Options DENY
+Header always set X-XSS-Protection "1; mode=block"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+# Hide sensitive files
+<Files ~ "^\.">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files ~ "\.php$">
+    Order allow,deny
+    Allow from all
+</Files>
+
+# Prevent access to config files
+<Files "database.php">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# API Routes
+# Auth endpoints
+RewriteRule ^api/auth/register/?$ api/auth/register.php [L]
+RewriteRule ^api/auth/login/?$ api/auth/login.php [L]
+RewriteRule ^api/auth/validate/?$ api/auth/validate.php [L]
+RewriteRule ^api/auth/refresh/?$ api/auth/refresh.php [L]
+RewriteRule ^api/auth/profile/?$ api/auth/profile.php [L]
+RewriteRule ^api/auth/change-password/?$ api/auth/change-password.php [L]
+
+# Test endpoints
+RewriteRule ^api/test/database/?$ api/test/database.php [L]
+
+# Error pages
+ErrorDocument 404 /backend/api/errors/404.php
+ErrorDocument 500 /backend/api/errors/500.php
+
+# Logging
+LogLevel warn
+CustomLog logs/api_access.log combined
+ErrorLog logs/api_error.log
+
+# Performance optimizations
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType application/json "access plus 0 seconds"
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE text/plain
+</IfModule>
+
+# Rate limiting (basic)
+<IfModule mod_evasive24.c>
+    DOSHashTableSize    2048
+    DOSPageCount        10
+    DOSSiteCount        50
+    DOSPageInterval     1
+    DOSSiteInterval     1
+    DOSBlockingPeriod   600
+</IfModule>
