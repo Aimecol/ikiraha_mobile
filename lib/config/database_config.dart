@@ -9,8 +9,8 @@ class DatabaseConfig {
   static const String password = ''; // Default XAMPP password is empty
   static const int port = 3306;
   
-  // API Base URL (backend integration)
-  static const String apiBaseUrl = 'http://localhost/clone/ikiraha_mobile/backend/api';
+  // API Base URL (backend integration) - working endpoints
+  static const String apiBaseUrl = 'http://localhost/ikiraha_api';
   
   // App Configuration
   static const String appName = 'Ikiraha Mobile';

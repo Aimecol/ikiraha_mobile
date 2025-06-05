@@ -84,7 +84,7 @@ class AuthService {
       );
 
       final response = await _apiClient.post<AuthData>(
-        '/auth/login',
+        '/login.php',
         body: loginRequest.toJson(),
         fromJson: (json) => AuthData.fromJson(json),
       );
@@ -123,7 +123,7 @@ class AuthService {
       );
 
       final response = await _apiClient.post<AuthData>(
-        '/auth/register',
+        '/register.php',
         body: registerRequest.toJson(),
         fromJson: (json) => AuthData.fromJson(json),
       );
@@ -347,7 +347,8 @@ class AuthService {
   // Test backend connection
   Future<bool> testConnection() async {
     try {
-      return await _apiClient.testConnection();
+      final response = await _apiClient.get('/test_connection.php');
+      return response.success;
     } catch (e) {
       print('Connection test error: $e');
       return false;

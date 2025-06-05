@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ikiraha Mobile API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            border-left: 4px solid #4CAF50;
+        }
+        .error {
+            border-left: 4px solid #f44336;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.online {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.offline {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Ikiraha Mobile API Test</h1>
+        <p>Test the backend API endpoints for user registration and login.</p>
+
+        <div id="connectionStatus" class="status">
+            <strong>Connection Status:</strong> <span id="statusText">Testing...</span>
+        </div>
+
+        <div class="test-section">
+            <h3>1. Database Connection Test</h3>
+            <button onclick="testConnection()">Test Connection</button>
+            <div id="connectionResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. User Registration</h3>
+            <input type="text" id="firstName" placeholder="First Name" value="John">
+            <input type="text" id="lastName" placeholder="Last Name" value="Doe">
+            <input type="email" id="regEmail" placeholder="Email" value="john.doe@example.com">
+            <input type="text" id="phone" placeholder="Phone" value="+250788123456">
+            <input type="password" id="regPassword" placeholder="Password" value="SecurePass123">
+            <button onclick="testRegister()">Register User</button>
+            <div id="registerResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. User Login</h3>
+            <input type="email" id="loginEmail" placeholder="Email" value="john.doe@example.com">
+            <input type="password" id="loginPassword" placeholder="Password" value="SecurePass123">
+            <button onclick="testLogin()">Login User</button>
+            <div id="loginResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. API Information</h3>
+            <p><strong>API Base URL:</strong> http://localhost/ikiraha_api/</p>
+            <p><strong>Endpoints:</strong></p>
+            <ul>
+                <li>GET /test_connection.php - Database connection test</li>
+                <li>POST /register.php - User registration</li>
+                <li>POST /login.php - User login</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/ikiraha_api';
+
+        async function makeRequest(endpoint, method = 'GET', body = null) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
+
+                const response = await fetch(API_BASE + endpoint, options);
+                const data = await response.json();
+                
+                return {
+                    status: response.status,
+                    data: data
+                };
+            } catch (error) {
+                return {
+                    status: 0,
+                    data: { success: false, message: error.message }
+                };
+            }
+        }
+
+        function displayResult(elementId, result) {
+            const element = document.getElementById(elementId);
+            element.textContent = JSON.stringify(result, null, 2);
+            element.className = 'result ' + (result.data.success ? 'success' : 'error');
+        }
+
+        function updateConnectionStatus(isOnline) {
+            const statusDiv = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('statusText');
+            
+            if (isOnline) {
+                statusDiv.className = 'status online';
+                statusText.textContent = 'API is online and database is connected';
+            } else {
+                statusDiv.className = 'status offline';
+                statusText.textContent = 'API is offline or database connection failed';
+            }
+        }
+
+        async function testConnection() {
+            const result = await makeRequest('/test_connection.php');
+            displayResult('connectionResult', result);
+            updateConnectionStatus(result.data.success);
+        }
+
+        async function testRegister() {
+            const body = {
+                first_name: document.getElementById('firstName').value,
+                last_name: document.getElementById('lastName').value,
+                email: document.getElementById('regEmail').value,
+                phone: document.getElementById('phone').value,
+                password: document.getElementById('regPassword').value
+            };
+
+            const result = await makeRequest('/register.php', 'POST', body);
+            displayResult('registerResult', result);
+
+            if (result.data.success) {
+                // Auto-fill login form with registered user
+                document.getElementById('loginEmail').value = body.email;
+                document.getElementById('loginPassword').value = body.password;
+            }
+        }
+
+        async function testLogin() {
+            const body = {
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginPassword').value
+            };
+
+            const result = await makeRequest('/login.php', 'POST', body);
+            displayResult('loginResult', result);
+        }
+
+        // Test connection on page load
+        window.onload = function() {
+            testConnection();
+        };
+    </script>
+</body>
+</html>
