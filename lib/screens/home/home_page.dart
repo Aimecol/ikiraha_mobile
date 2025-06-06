@@ -3,6 +3,7 @@ import '../../config/database_config.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/connection_test_widget.dart';
 import '../auth/login_screen.dart';
+import '../test/role_test_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -488,6 +489,18 @@ class ProfileScreen extends StatelessWidget {
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Help & support coming soon!')),
+                );
+              },
+            ),
+
+            _buildProfileOption(
+              context,
+              icon: Icons.admin_panel_settings,
+              title: 'Role Test (Debug)',
+              subtitle: 'Test role-based navigation',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const RoleTestScreen()),
                 );
               },
             ),

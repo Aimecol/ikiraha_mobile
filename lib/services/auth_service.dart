@@ -30,6 +30,22 @@ class AuthService {
   String? get currentUserEmail => _currentUser?.email;
   String? get currentUserName => _currentUser?.fullName;
   String? get authToken => _authToken;
+  String? get currentUserRole => _currentUser?.roleName;
+
+  // Role checking methods
+  bool get isSuperAdmin => _currentUser?.roleName == 'super_admin';
+  bool get isAdmin => _currentUser?.roleName == 'admin' || isSuperAdmin;
+  bool get isRestaurantOwner => _currentUser?.roleName == 'restaurant_owner';
+  bool get isRestaurantManager => _currentUser?.roleName == 'restaurant_manager';
+  bool get isDeliveryDriver => _currentUser?.roleName == 'delivery_driver';
+  bool get isCustomer => _currentUser?.roleName == 'customer';
+
+  // Check if user has specific role
+  bool hasRole(String role) => _currentUser?.roleName == role;
+
+  // Check if user has any of the specified roles
+  bool hasAnyRole(List<String> roles) =>
+      _currentUser != null && roles.contains(_currentUser!.roleName);
 
   // Initialize auth service (call this on app startup)
   Future<void> initialize() async {

@@ -11,6 +11,10 @@ class DatabaseConfig {
   
   // API Base URL (backend integration) - working endpoints
   static const String apiBaseUrl = 'http://localhost/ikiraha_api';
+
+  // Alternative URLs for different environments
+  static const String localApiUrl = 'http://127.0.0.1/ikiraha_api';
+  static const String xamppApiUrl = 'http://localhost:80/ikiraha_api';
   
   // App Configuration
   static const String appName = 'Ikiraha Mobile';

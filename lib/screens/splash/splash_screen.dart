@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../config/database_config.dart';
 import '../../services/auth_service.dart';
+import '../../services/role_based_navigation.dart';
 import '../auth/login_screen.dart';
-import '../home/home_page.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -73,9 +73,8 @@ class _SplashScreenState extends State<SplashScreen>
 
       if (mounted) {
         if (isLoggedIn) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const HomePage()),
-          );
+          // Navigate to role-based home screen
+          RoleBasedNavigation.navigateToRoleBasedHome(context);
         } else {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const LoginScreen()),

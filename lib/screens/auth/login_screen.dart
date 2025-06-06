@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../config/database_config.dart';
 import '../../services/auth_service.dart';
+import '../../services/role_based_navigation.dart';
 import 'register_screen.dart';
-import '../home/home_page.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -49,9 +49,8 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
 
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const HomePage()),
-          );
+          // Navigate to role-based home screen
+          RoleBasedNavigation.navigateToRoleBasedHome(context);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
