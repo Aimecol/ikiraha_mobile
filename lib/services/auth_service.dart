@@ -100,7 +100,7 @@ class AuthService {
       );
 
       final response = await _apiClient.post<AuthData>(
-        '/login.php',
+        '/auth/login',
         body: loginRequest.toJson(),
         fromJson: (json) => AuthData.fromJson(json),
       );
@@ -139,7 +139,7 @@ class AuthService {
       );
 
       final response = await _apiClient.post<AuthData>(
-        '/register.php',
+        '/auth/register',
         body: registerRequest.toJson(),
         fromJson: (json) => AuthData.fromJson(json),
       );
